@@ -26,29 +26,30 @@ func TestLog(t *testing.T) {
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
 
-	var core zapcore.Core
-	core = zapcore.NewCore(consoleEncoder, consoleWriter, logLevelChecker{level: zapcore.DebugLevel})
+	core := zapcore.NewCore(consoleEncoder, consoleWriter, logLevelChecker{level: zapcore.DebugLevel})
 
 	tempLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	tempLogger = tempLogger.WithOptions(zap.AddCallerSkip(1))
-	gslog.SetBackend(NewBackend(gslog.LogLevelAll, tempLogger))
+	gslog.SetBackend(NewBackend(tempLogger))
 	gslog.Info("gs-hello")
 	gslog.Warn("start")
 	logger := gslog.GetLogger("app")
+	flogger := gslog.GetFieldLogger("app")
 	for {
-		logger.Debug("debug", 1)
+		flogger.Debug("debug", gslog.Fields{"int": 1})
+		flogger.Info("info", gslog.Fields{"str": "abc"})
+		flogger.Warn("warn", gslog.Fields{"bool": true})
+		flogger.Error("error", gslog.Fields{"bool": false})
+		flogger.Log(gslog.LogLevelDebug, "log debug", gslog.Fields{"key1": "value1"})
+		time.Sleep(time.Second * 3)
+		logger.Debug("debug", 1, "str")
 		logger.Info("info", "abc")
 		logger.Warn("warn", true)
 		logger.Error("error", false)
-		// logger.WithFields(gslog.Fields{"key1": 1, "key2": "val2"}).Error("field output")
-		logger.Log(gslog.LogLevelDebug, "log debug", "value1", "value2")
-		logger.Logf(gslog.LogLevelDebug, "log debug format key1=%s key2=%d", "value1", 123)
-		// time.Sleep(time.Second)
-		// gslog.Debugf("debugf %s", "name")
-		// gslog.Infof("infof %s", "value")
-		// gslog.Warnf("warnf %d", 20)
-		// gslog.Errorf("errorf %v", 100)
-		time.Sleep(time.Second * 3)
+		logger.Debugf("debugf %s", "name")
+		logger.Infof("infof %s", "value")
+		logger.Warnf("warnf %d", 20)
+		logger.Errorf("errorf %v", 100)
 		break
 	}
 }
