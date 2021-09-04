@@ -1,10 +1,3 @@
-# gslog-zap
-
-gslog backend based on uber's zap library
-
-## Example
-
-```go
 package main
 
 import (
@@ -56,5 +49,3 @@ func main() {
 	gslog.Errorf("errorf %v", 100)
 	logger.Info("output to zap")
 }
-
-```
