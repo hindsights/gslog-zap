@@ -35,26 +35,34 @@ func main() {
 	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
 	core := zapcore.NewCore(consoleEncoder, consoleWriter, logLevelChecker{level: zapcore.DebugLevel})
 	tempLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
-	tempLogger = tempLogger.WithOptions(zap.AddCallerSkip(1))
 
 	gslog.SetBackend(gszap.NewBackend(tempLogger))
 
 	gslog.Info("gs-zap-hello")
 	gslog.Warn("zap-start")
 
-	logger := gslog.GetFieldLogger("app")
-	logger.Debug("debug", gslog.Fields{"val": 1})
-	logger.Info("info", gslog.Fields{"strval": "abc"})
-	logger.Warn("warn", gslog.Fields{"boolval": true, "intval": 123})
-	logger.Error("error", gslog.Fields{"boolval": false, "name": "hello"})
-	logger.WithFields(gslog.Fields{"key1": 1, "key2": "val2"}).Error("field output")
-	logger.WithFields(gslog.Fields{"key1": 1, "key2": "val2"}).Info("field output", gslog.Fields{"val": 567})
+	flogger := gslog.GetLogger("app")
+	flogger.Int("val", 1).Debug("debug")
+	flogger.Str("str", "abc").Info("info")
+	flogger.Bool("bool", true).Warn("warn")
+	flogger.Bool("bool", false).Str("name", "hello").Error("error")
+	flogger.Fields(gslog.Fields{"key1": 1, "key2": "val2"}).Error("field output")
+	flogger.Fields(gslog.Fields{"key1": 1, "key2": "val2"}).Field("val", 566).Info("field output")
 
 	gslog.Debugf("debugf %s", "name")
 	gslog.Infof("infof %s", "value")
 	gslog.Warnf("warnf %d", 20)
 	gslog.Errorf("errorf %v", 100)
-	logger.Info("output to zap")
+	logger := gslog.GetSimpleLogger("slog")
+	logger.Info("output to zap", 123)
+	logger.Debug("debug", 1, "str")
+	logger.Info("info", "abc")
+	logger.Warn("warn", true)
+	logger.Error("error", false)
+	logger.Debugf("debugf %s", "name")
+	logger.Infof("infof %s", "value")
+	logger.Warnf("warnf %d", 20)
+	logger.Errorf("errorf %v", 100)
 }
 
 ```

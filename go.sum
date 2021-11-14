@@ -6,6 +6,10 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/hindsights/gslog v0.1.2 h1:bL1PMKjmEtGw9XCma1wyVsNqcKTgt1U3VhqAEA29U5s=
 github.com/hindsights/gslog v0.1.2/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
+github.com/hindsights/gslog v0.1.3 h1:Cvr7JPOyTdlZyKVr+Xh2CKv7WzXaQJzDSTMk9Uu3tyg=
+github.com/hindsights/gslog v0.1.3/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
+github.com/hindsights/gslog v0.1.4 h1:EFsHYgI66m0mmZu4F30mMS9u3lktcMYHbSEn5Fy7frE=
+github.com/hindsights/gslog v0.1.4/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
