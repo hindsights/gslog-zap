@@ -32,7 +32,7 @@ func TestLog(t *testing.T) {
 	gslog.SetBackend(NewBackend(tempLogger))
 	gslog.Info("gs-hello")
 	gslog.Warn("start")
-	logger := gslog.GetSimpleLogger("app")
+	logger := gslog.GetSugaredLogger("app")
 	flogger := gslog.GetLogger("app")
 	for {
 		flogger.Int("int", 1).Debug("debug")

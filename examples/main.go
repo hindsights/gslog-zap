@@ -46,7 +46,7 @@ func main() {
 	gslog.Infof("infof %s", "value")
 	gslog.Warnf("warnf %d", 20)
 	gslog.Errorf("errorf %v", 100)
-	logger := gslog.GetSimpleLogger("slog")
+	logger := gslog.GetSugaredLogger("slog")
 	logger.Info("output to zap", 123)
 	logger.Debug("debug", 1, "str")
 	logger.Info("info", "abc")
