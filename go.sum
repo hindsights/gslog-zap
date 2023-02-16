@@ -12,6 +12,10 @@ github.com/hindsights/gslog v0.1.4 h1:EFsHYgI66m0mmZu4F30mMS9u3lktcMYHbSEn5Fy7fr
 github.com/hindsights/gslog v0.1.4/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
 github.com/hindsights/gslog v0.1.5 h1:eWBHDidCyakLk1qAMbyOCn7BJ/CT1f/vSDi8x5I+gVA=
 github.com/hindsights/gslog v0.1.5/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
+github.com/hindsights/gslog v0.2.0 h1:JZLoMf3gxubjgla0eZiTXzSZ5w9kH4U5zwkaLMevddY=
+github.com/hindsights/gslog v0.2.0/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
+github.com/hindsights/gslog v0.2.1 h1:6GHALhZr91oj5UM41beP7Zox1I1hgSO3qORrqOZbXxI=
+github.com/hindsights/gslog v0.2.1/go.mod h1:8WjO78RBL0Ho9gRvzifkb72sVYdyERCBOk2LHVgU6bw=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=

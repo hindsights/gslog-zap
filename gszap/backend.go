@@ -64,8 +64,11 @@ func (backend *zapBackend) GetSugaredLogger(name string) gslog.SugaredLogger {
 }
 
 func NewBackend(logger *zap.Logger) gslog.Backend {
-	return &zapBackend{logger: logger, sugarLogger: logger.WithOptions(zap.AddCallerSkip(1)).Sugar()}
+	zlogger := logger.WithOptions(zap.AddCallerSkip(1))
+	return &zapBackend{logger: zlogger, sugarLogger: zlogger.Sugar()}
 }
+
+const badKey = "<badkey>"
 
 type fieldLogger struct {
 	backend *zapBackend
@@ -76,45 +79,92 @@ func (logger fieldLogger) NeedLog(level gslog.LogLevel) bool {
 	return logger.backend.logger.Core().Enabled(FromGSLogLevel(level))
 }
 
-func (logger fieldLogger) Log(level gslog.LogLevel, msg string) {
+func extractAttr(args []interface{}) (zap.Field, []interface{}) {
+	switch x := args[0].(type) {
+	case string:
+		if len(args) >= 2 {
+			return zap.Any(x, args[1]), args[2:]
+		}
+		return zap.Any(x, args[1]), nil
+	case gslog.Attr:
+		return zap.Any(x.Key, x.Value), args[1:]
+	default:
+		return zap.Any(badKey, x), args[1:]
+	}
+}
+
+func (logger fieldLogger) joinFields(args []interface{}) []zap.Field {
+	if len(args) == 0 {
+		return logger.fields
+	}
+	ret := make([]zap.Field, 0, len(logger.fields)+len(args))
+	ret = append(ret, logger.fields...)
+	var field zap.Field
+	for {
+		if len(args) == 0 {
+			break
+		}
+		field, args = extractAttr(args)
+		ret = append(ret, field)
+	}
+	return ret
+}
+
+func (logger fieldLogger) LogDirect(level gslog.LogLevel, msg string, args ...interface{}) {
 	if !logger.NeedLog(level) {
 		return
 	}
+	fields := logger.joinFields(args)
 	if level <= gslog.LogLevelDebug {
-		logger.backend.logger.Debug(msg, logger.fields...)
+		logger.backend.logger.Debug(msg, fields...)
 	} else if level == gslog.LogLevelInfo {
-		logger.backend.logger.Info(msg, logger.fields...)
+		logger.backend.logger.Info(msg, fields...)
 	} else if level == gslog.LogLevelWarn {
-		logger.backend.logger.Warn(msg, logger.fields...)
+		logger.backend.logger.Warn(msg, fields...)
 	} else if level == gslog.LogLevelError {
-		logger.backend.logger.Error(msg, logger.fields...)
+		logger.backend.logger.Error(msg, fields...)
 	} else if level >= gslog.LogLevelFatal {
-		logger.backend.logger.Fatal(msg, logger.fields...)
+		logger.backend.logger.Fatal(msg, fields...)
 	}
 }
 
-func (logger fieldLogger) Trace(msg string) {
-	logger.Debug(msg)
+func (logger fieldLogger) Log(level gslog.LogLevel, msg string, args ...interface{}) {
+	logger.LogDirect(level, msg, args...)
 }
 
-func (logger fieldLogger) Debug(msg string) {
-	logger.backend.logger.Debug(msg, logger.fields...)
+func (logger fieldLogger) Trace(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelDebug, msg, args...)
 }
 
-func (logger fieldLogger) Info(msg string) {
-	logger.backend.logger.Info(msg, logger.fields...)
+func (logger fieldLogger) Debug(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelDebug, msg, args...)
 }
 
-func (logger fieldLogger) Warn(msg string) {
-	logger.backend.logger.Warn(msg, logger.fields...)
+func (logger fieldLogger) Info(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelInfo, msg, args...)
 }
 
-func (logger fieldLogger) Error(msg string) {
-	logger.backend.logger.Error(msg, logger.fields...)
+func (logger fieldLogger) Warn(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelWarn, msg, args...)
 }
 
-func (logger fieldLogger) Fatal(msg string) {
-	logger.backend.logger.Fatal(msg, logger.fields...)
+func (logger fieldLogger) Error(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelError, msg, args...)
+}
+
+func (logger fieldLogger) Fatal(msg string, args ...interface{}) {
+	logger.LogDirect(gslog.LogLevelFatal, msg, args...)
+}
+
+func (logger fieldLogger) WithAttrs(attrs ...gslog.Attr) gslog.Logger {
+	newFields := make([]zap.Field, len(logger.fields)+len(attrs))
+	copy(newFields, logger.fields)
+	i := len(logger.fields)
+	for _, attr := range attrs {
+		newFields[i] = zap.Any(attr.Key, attr.Value)
+		i++
+	}
+	return fieldLogger{backend: logger.backend, fields: newFields}
 }
 
 func (logger fieldLogger) Fields(fields gslog.Fields) gslog.Logger {
@@ -129,7 +179,10 @@ func (logger fieldLogger) Fields(fields gslog.Fields) gslog.Logger {
 }
 
 func (logger fieldLogger) Field(key string, val interface{}) gslog.Logger {
-	return fieldLogger{backend: logger.backend, fields: append(logger.fields, zap.Any(key, val))}
+	newFields := make([]zap.Field, len(logger.fields)+1)
+	copy(newFields, logger.fields)
+	newFields[len(logger.fields)] = zap.Any(key, val)
+	return fieldLogger{backend: logger.backend, fields: newFields}
 }
 
 func (logger fieldLogger) Str(key string, val string) gslog.Logger {
@@ -229,78 +282,88 @@ func (logger sugaredLogger) prepareFormatArgs(format string, args []interface{})
 	return "%s " + format, newArgs
 }
 
-func (logger sugaredLogger) doLog(level gslog.LogLevel, f func(...interface{}), args ...interface{}) {
-	if !logger.NeedLog(level) {
-		return
-	}
-	newArgs := logger.prepareArgs(args)
-	f(newArgs...)
-}
+// func (logger sugaredLogger) doLog(level gslog.LogLevel, f func(...interface{}), args ...interface{}) {
+// 	if !logger.NeedLog(level) {
+// 		return
+// 	}
+// 	newArgs := logger.prepareArgs(args)
+// 	f(newArgs...)
+// }
 
-func (logger sugaredLogger) doLogf(level gslog.LogLevel, f func(string, ...interface{}), format string, args ...interface{}) {
-	if !logger.NeedLog(level) {
-		return
-	}
-	newFormat, newArgs := logger.prepareFormatArgs(format, args)
-	f(newFormat, newArgs...)
-}
+// func (logger sugaredLogger) doLogf(level gslog.LogLevel, f func(string, ...interface{}), format string, args ...interface{}) {
+// 	if !logger.NeedLog(level) {
+// 		return
+// 	}
+// 	newFormat, newArgs := logger.prepareFormatArgs(format, args)
+// 	f(newFormat, newArgs...)
+// }
 
 func (logger sugaredLogger) NeedLog(level gslog.LogLevel) bool {
 	return logger.backend.logger.Core().Enabled(FromGSLogLevel(level))
 }
 
 func (logger sugaredLogger) Logf(level gslog.LogLevel, format string, args ...interface{}) {
+	logger.LogfDirect(level, format, args...)
+}
+
+func (logger sugaredLogger) LogfDirect(level gslog.LogLevel, format string, args ...interface{}) {
 	if !logger.NeedLog(level) {
 		return
 	}
+	newFormat, newArgs := logger.prepareFormatArgs(format, args)
 	if level <= gslog.LogLevelDebug {
-		logger.doLogf(gslog.LogLevelDebug, logger.backend.sugarLogger.Debugf, format, args...)
+		logger.backend.sugarLogger.Debugf(newFormat, newArgs...)
 	} else if level == gslog.LogLevelInfo {
-		logger.doLogf(gslog.LogLevelInfo, logger.backend.sugarLogger.Infof, format, args...)
+		logger.backend.sugarLogger.Infof(newFormat, newArgs...)
 	} else if level == gslog.LogLevelWarn {
-		logger.doLogf(gslog.LogLevelWarn, logger.backend.sugarLogger.Warnf, format, args...)
+		logger.backend.sugarLogger.Warnf(newFormat, newArgs...)
 	} else if level >= gslog.LogLevelError {
-		logger.doLogf(gslog.LogLevelError, logger.backend.sugarLogger.Errorf, format, args...)
+		logger.backend.sugarLogger.Errorf(newFormat, newArgs...)
+	}
+}
+
+func (logger sugaredLogger) LogDirect(level gslog.LogLevel, args ...interface{}) {
+	if !logger.NeedLog(level) {
+		return
+	}
+	newArgs := logger.prepareArgs(args)
+	if level <= gslog.LogLevelDebug {
+		logger.backend.sugarLogger.Debug(newArgs...)
+	} else if level == gslog.LogLevelInfo {
+		logger.backend.sugarLogger.Info(newArgs...)
+	} else if level == gslog.LogLevelWarn {
+		logger.backend.sugarLogger.Warn(newArgs...)
+	} else if level >= gslog.LogLevelError {
+		logger.backend.sugarLogger.Error(newArgs...)
 	}
 }
 
 func (logger sugaredLogger) Log(level gslog.LogLevel, args ...interface{}) {
-	if !logger.NeedLog(level) {
-		return
-	}
-	if level <= gslog.LogLevelDebug {
-		logger.doLog(gslog.LogLevelDebug, logger.backend.sugarLogger.Debug, args...)
-	} else if level == gslog.LogLevelInfo {
-		logger.doLog(gslog.LogLevelInfo, logger.backend.sugarLogger.Info, args...)
-	} else if level == gslog.LogLevelWarn {
-		logger.doLog(gslog.LogLevelWarn, logger.backend.sugarLogger.Warn, args...)
-	} else if level >= gslog.LogLevelError {
-		logger.doLog(gslog.LogLevelError, logger.backend.sugarLogger.Error, args...)
-	}
+	logger.LogDirect(level, args...)
 }
 
 func (logger sugaredLogger) Trace(args ...interface{}) {
-	logger.doLog(gslog.LogLevelDebug, logger.backend.sugarLogger.Debug, args...)
+	logger.LogDirect(gslog.LogLevelDebug, args...)
 }
 
 func (logger sugaredLogger) Debug(args ...interface{}) {
-	logger.doLog(gslog.LogLevelDebug, logger.backend.sugarLogger.Debug, args...)
+	logger.LogDirect(gslog.LogLevelDebug, args...)
 }
 
 func (logger sugaredLogger) Info(args ...interface{}) {
-	logger.doLog(gslog.LogLevelInfo, logger.backend.sugarLogger.Info, args...)
+	logger.LogDirect(gslog.LogLevelInfo, args...)
 }
 
 func (logger sugaredLogger) Warn(args ...interface{}) {
-	logger.doLog(gslog.LogLevelWarn, logger.backend.sugarLogger.Warn, args...)
+	logger.LogDirect(gslog.LogLevelWarn, args...)
 }
 
 func (logger sugaredLogger) Error(args ...interface{}) {
-	logger.doLog(gslog.LogLevelError, logger.backend.sugarLogger.Error, args...)
+	logger.LogDirect(gslog.LogLevelError, args...)
 }
 
 func (logger sugaredLogger) Fatal(args ...interface{}) {
-	logger.doLog(gslog.LogLevelFatal, logger.backend.sugarLogger.Fatal, args...)
+	logger.LogDirect(gslog.LogLevelFatal, args...)
 }
 
 func (logger sugaredLogger) Tracef(format string, args ...interface{}) {
@@ -308,21 +371,21 @@ func (logger sugaredLogger) Tracef(format string, args ...interface{}) {
 }
 
 func (logger sugaredLogger) Debugf(format string, args ...interface{}) {
-	logger.doLogf(gslog.LogLevelDebug, logger.backend.sugarLogger.Debugf, format, args...)
+	logger.LogfDirect(gslog.LogLevelDebug, format, args...)
 }
 
 func (logger sugaredLogger) Infof(format string, args ...interface{}) {
-	logger.doLogf(gslog.LogLevelInfo, logger.backend.sugarLogger.Infof, format, args...)
+	logger.LogfDirect(gslog.LogLevelInfo, format, args...)
 }
 
 func (logger sugaredLogger) Warnf(format string, args ...interface{}) {
-	logger.doLogf(gslog.LogLevelWarn, logger.backend.sugarLogger.Warnf, format, args...)
+	logger.LogfDirect(gslog.LogLevelWarn, format, args...)
 }
 
 func (logger sugaredLogger) Errorf(format string, args ...interface{}) {
-	logger.doLogf(gslog.LogLevelError, logger.backend.sugarLogger.Errorf, format, args...)
+	logger.LogfDirect(gslog.LogLevelError, format, args...)
 }
 
 func (logger sugaredLogger) Fatalf(format string, args ...interface{}) {
-	logger.doLogf(gslog.LogLevelFatal, logger.backend.sugarLogger.Fatalf, format, args...)
+	logger.LogfDirect(gslog.LogLevelFatal, format, args...)
 }
