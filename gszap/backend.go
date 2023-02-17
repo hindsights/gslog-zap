@@ -9,6 +9,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	ErrorKey      = "err"
+	LoggerNameKey = "ctx"
+)
+
+const badKey = "<badkey>"
+
 var (
 	zapLevels map[gslog.LogLevel]zapcore.Level
 	gsLevels  map[zapcore.Level]gslog.LogLevel
@@ -56,7 +63,7 @@ type zapBackend struct {
 }
 
 func (backend *zapBackend) GetLogger(name string) gslog.Logger {
-	return fieldLogger{backend: backend, fields: []zap.Field{zap.String("ctx", name)}}
+	return fieldLogger{backend: backend, fields: []zap.Field{zap.String(LoggerNameKey, name)}}
 }
 
 func (backend *zapBackend) GetSugaredLogger(name string) gslog.SugaredLogger {
@@ -67,8 +74,6 @@ func NewBackend(logger *zap.Logger) gslog.Backend {
 	zlogger := logger.WithOptions(zap.AddCallerSkip(1))
 	return &zapBackend{logger: zlogger, sugarLogger: zlogger.Sugar()}
 }
-
-const badKey = "<badkey>"
 
 type fieldLogger struct {
 	backend *zapBackend
@@ -88,6 +93,8 @@ func extractAttr(args []interface{}) (zap.Field, []interface{}) {
 		return zap.Any(x, args[1]), nil
 	case gslog.Attr:
 		return zap.Any(x.Key, x.Value), args[1:]
+	case error:
+		return zap.Any(ErrorKey, args[1]), args[1:]
 	default:
 		return zap.Any(badKey, x), args[1:]
 	}
