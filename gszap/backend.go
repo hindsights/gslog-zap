@@ -100,12 +100,12 @@ func extractAttr(args []interface{}) (zap.Field, []interface{}) {
 	}
 }
 
-func (logger fieldLogger) joinFields(args []interface{}) []zap.Field {
+func joinFields(fields []zap.Field, args []interface{}) []zap.Field {
 	if len(args) == 0 {
-		return logger.fields
+		return fields
 	}
-	ret := make([]zap.Field, 0, len(logger.fields)+len(args))
-	ret = append(ret, logger.fields...)
+	ret := make([]zap.Field, 0, len(fields)+len(args))
+	ret = append(ret, fields...)
 	var field zap.Field
 	for {
 		if len(args) == 0 {
@@ -121,7 +121,7 @@ func (logger fieldLogger) LogDirect(level gslog.LogLevel, msg string, args ...in
 	if !logger.NeedLog(level) {
 		return
 	}
-	fields := logger.joinFields(args)
+	fields := joinFields(logger.fields, args)
 	if level <= gslog.LogLevelDebug {
 		logger.backend.logger.Debug(msg, fields...)
 	} else if level == gslog.LogLevelInfo {
@@ -161,6 +161,10 @@ func (logger fieldLogger) Error(msg string, args ...interface{}) {
 
 func (logger fieldLogger) Fatal(msg string, args ...interface{}) {
 	logger.LogDirect(gslog.LogLevelFatal, msg, args...)
+}
+
+func (logger fieldLogger) With(args ...interface{}) gslog.Logger {
+	return fieldLogger{backend: logger.backend, fields: joinFields(logger.fields, args)}
 }
 
 func (logger fieldLogger) WithAttrs(attrs ...gslog.Attr) gslog.Logger {

@@ -40,6 +40,8 @@ func TestLog(t *testing.T) {
 		flogger.Bool("bool", true).Warn("warn")
 		flogger.Bool("bool", false).Error("error")
 		flogger.Str("key1", "val1").Log(gslog.LogLevelDebug, "log debug", "skey1", "sval1", "skey2", 2)
+		flogger.With("key2", "val2", "keyint", 12345).Log(gslog.LogLevelDebug, "log debug with", "skey1", "sval1", "skey2", 2)
+		flogger.WithAttrs(gslog.String("key2", "val2"), gslog.Int("keyint", 12345)).Log(gslog.LogLevelDebug, "log attrs", "skey1", "sval1", "skey2", 2)
 		flogger.Log(gslog.LogLevelError, "log-msg", "abckey", "abcval", "num", 30)
 		time.Sleep(time.Second * 2)
 		logger.Debug("debug", 1, "str")
