@@ -1,6 +1,7 @@
 package gszap
 
 import (
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -35,6 +36,11 @@ func TestLog(t *testing.T) {
 	logger := gslog.GetSugaredLogger("app")
 	flogger := gslog.GetLogger("app")
 	for {
+		flogger.Debug("debug", 1, "str")
+		flogger.Info("info", "abc")
+		flogger.Warn("warn", true)
+		flogger.Error("error", false)
+		flogger.Error("testerr", errors.New("testerr"))
 		flogger.Int("int", 1).Debug("debug", "skey1", "sval1", "skey2", 2)
 		flogger.Str("str", "abc").Info("info")
 		flogger.Bool("bool", true).Warn("warn")

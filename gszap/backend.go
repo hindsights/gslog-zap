@@ -94,7 +94,7 @@ func extractAttr(args []interface{}) (zap.Field, []interface{}) {
 	case gslog.Attr:
 		return zap.Any(x.Key, x.Value), args[1:]
 	case error:
-		return zap.Any(ErrorKey, args[1]), args[1:]
+		return zap.Any(ErrorKey, x), args[1:]
 	default:
 		return zap.Any(badKey, x), args[1:]
 	}
