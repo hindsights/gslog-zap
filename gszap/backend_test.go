@@ -19,6 +19,12 @@ func (checker logLevelChecker) Enabled(l zapcore.Level) bool {
 	return l >= checker.level
 }
 
+type inttype int
+
+const (
+	intval1 inttype = 1
+)
+
 func TestLog(t *testing.T) {
 	consoleWriter := zapcore.Lock(os.Stdout)
 
@@ -35,6 +41,7 @@ func TestLog(t *testing.T) {
 	gslog.Warn("start")
 	logger := gslog.GetSugaredLogger("app")
 	flogger := gslog.GetLogger("app")
+	flogger.Debug("custom type", "intval1", intval1)
 	for {
 		flogger.Debug("debug", 1, "str")
 		flogger.Info("info", "abc")
