@@ -58,12 +58,44 @@ func ToGSLogLevel(level zapcore.Level) gslog.LogLevel {
 }
 
 type zapBackend struct {
+	getter      func() *zap.Logger
 	logger      *zap.Logger
 	sugarLogger *zap.SugaredLogger
 }
 
+func (backend *zapBackend) NewLogger() gslog.Logger {
+	return fieldLogger{backend: backend}
+}
+
 func (backend *zapBackend) GetLogger(name string) gslog.Logger {
-	return fieldLogger{backend: backend, fields: []zap.Field{zap.String(LoggerNameKey, name)}}
+	var fields []zap.Field
+	if name != "" {
+		fields = append(fields, zap.String(LoggerNameKey, name))
+	}
+	return fieldLogger{backend: backend, fields: fields}
+}
+
+func (backend *zapBackend) getZapLogger() *zap.Logger {
+	if backend.logger != nil {
+		return backend.logger
+	}
+	if backend.getter != nil {
+		return backend.getter()
+	}
+	return nil
+}
+
+func (backend *zapBackend) getZapSugarLogger() *zap.SugaredLogger {
+	if backend.sugarLogger != nil {
+		return backend.sugarLogger
+	}
+	if backend.logger != nil {
+		return backend.logger.Sugar()
+	}
+	if backend.getter != nil {
+		return backend.getter().Sugar()
+	}
+	return nil
 }
 
 func (backend *zapBackend) GetSugaredLogger(name string) gslog.SugaredLogger {
@@ -75,13 +107,17 @@ func NewBackend(logger *zap.Logger) gslog.Backend {
 	return &zapBackend{logger: zlogger, sugarLogger: zlogger.Sugar()}
 }
 
+func NewBackendWith(f func() *zap.Logger) gslog.Backend {
+	return &zapBackend{getter: f}
+}
+
 type fieldLogger struct {
 	backend *zapBackend
 	fields  []zap.Field
 }
 
 func (logger fieldLogger) NeedLog(level gslog.LogLevel) bool {
-	return logger.backend.logger.Core().Enabled(FromGSLogLevel(level))
+	return logger.backend.getZapLogger().Core().Enabled(FromGSLogLevel(level))
 }
 
 func extractAttr(args []interface{}) (zap.Field, []interface{}) {
@@ -123,17 +159,18 @@ func (logger fieldLogger) LogDirect(level gslog.LogLevel, msg string, args ...in
 	if !logger.NeedLog(level) {
 		return
 	}
+	zlogger := logger.backend.getZapLogger()
 	fields := joinFields(logger.fields, args)
 	if level <= gslog.LogLevelDebug {
-		logger.backend.logger.Debug(msg, fields...)
+		zlogger.Debug(msg, fields...)
 	} else if level == gslog.LogLevelInfo {
-		logger.backend.logger.Info(msg, fields...)
+		zlogger.Info(msg, fields...)
 	} else if level == gslog.LogLevelWarn {
-		logger.backend.logger.Warn(msg, fields...)
+		zlogger.Warn(msg, fields...)
 	} else if level == gslog.LogLevelError {
-		logger.backend.logger.Error(msg, fields...)
+		zlogger.Error(msg, fields...)
 	} else if level >= gslog.LogLevelFatal {
-		logger.backend.logger.Fatal(msg, fields...)
+		zlogger.Fatal(msg, fields...)
 	}
 }
 
@@ -312,7 +349,7 @@ func (logger sugaredLogger) prepareFormatArgs(format string, args []interface{})
 // }
 
 func (logger sugaredLogger) NeedLog(level gslog.LogLevel) bool {
-	return logger.backend.logger.Core().Enabled(FromGSLogLevel(level))
+	return logger.backend.getZapLogger().Core().Enabled(FromGSLogLevel(level))
 }
 
 func (logger sugaredLogger) Logf(level gslog.LogLevel, format string, args ...interface{}) {
@@ -325,13 +362,13 @@ func (logger sugaredLogger) LogfDirect(level gslog.LogLevel, format string, args
 	}
 	newFormat, newArgs := logger.prepareFormatArgs(format, args)
 	if level <= gslog.LogLevelDebug {
-		logger.backend.sugarLogger.Debugf(newFormat, newArgs...)
+		logger.backend.getZapSugarLogger().Debugf(newFormat, newArgs...)
 	} else if level == gslog.LogLevelInfo {
-		logger.backend.sugarLogger.Infof(newFormat, newArgs...)
+		logger.backend.getZapSugarLogger().Infof(newFormat, newArgs...)
 	} else if level == gslog.LogLevelWarn {
-		logger.backend.sugarLogger.Warnf(newFormat, newArgs...)
+		logger.backend.getZapSugarLogger().Warnf(newFormat, newArgs...)
 	} else if level >= gslog.LogLevelError {
-		logger.backend.sugarLogger.Errorf(newFormat, newArgs...)
+		logger.backend.getZapSugarLogger().Errorf(newFormat, newArgs...)
 	}
 }
 
@@ -341,13 +378,13 @@ func (logger sugaredLogger) LogDirect(level gslog.LogLevel, args ...interface{})
 	}
 	newArgs := logger.prepareArgs(args)
 	if level <= gslog.LogLevelDebug {
-		logger.backend.sugarLogger.Debug(newArgs...)
+		logger.backend.getZapSugarLogger().Debug(newArgs...)
 	} else if level == gslog.LogLevelInfo {
-		logger.backend.sugarLogger.Info(newArgs...)
+		logger.backend.getZapSugarLogger().Info(newArgs...)
 	} else if level == gslog.LogLevelWarn {
-		logger.backend.sugarLogger.Warn(newArgs...)
+		logger.backend.getZapSugarLogger().Warn(newArgs...)
 	} else if level >= gslog.LogLevelError {
-		logger.backend.sugarLogger.Error(newArgs...)
+		logger.backend.getZapSugarLogger().Error(newArgs...)
 	}
 }
 

@@ -36,12 +36,16 @@ func TestLog(t *testing.T) {
 	core := zapcore.NewCore(consoleEncoder, consoleWriter, logLevelChecker{level: zapcore.DebugLevel})
 
 	tempLogger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	tempLogger2 := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(2))
 	gslog.SetBackend(NewBackend(tempLogger))
+	gslog.SetBackend(NewBackendWith(func() *zap.Logger { return tempLogger2 }))
 	gslog.Info("gs-hello")
 	gslog.Warn("start")
 	logger := gslog.GetSugaredLogger("app")
 	flogger := gslog.GetLogger("app")
 	flogger.Debug("custom type", "intval1", intval1)
+	var err error
+	flogger.Debug("custom type", "intval1", intval1, "err", err)
 	for {
 		flogger.Debug("debug", 1, "str")
 		flogger.Info("info", "abc")
